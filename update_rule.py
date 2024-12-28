@@ -83,3 +83,11 @@ def alive_masking(state_grid):
     state_grid = state_grid * alive
 
     return state_grid
+
+def update(state_grid):
+    perception_grid = perceive(state_grid)
+    updates_grid = update_grid(perception_grid)
+    updated_grid = stochastic_update(state_grid, updates_grid)
+    final_grid = alive_masking(updated_grid)
+    
+    return final_grid

@@ -1,19 +1,21 @@
 import numpy as np
-import sklearn.neural_network as nn
-from update_rule import perceive, update_rule, stochastic_update, alive_masking, update_grid
+import random
+from update_rule import update
 from config import height, width
+from plot import animate_automata
+from convert_image import load_image
 
-state_grid = np.zeros(shape=(height, width, 16))
+img = load_image()
+
+# state_grid = np.zeros(shape=(height, width, 16))
+state_grid = img
 
 # plant center seed
 seed_height = height // 2
 seed_width = width // 2
 state_grid[seed_height, seed_width, 3:] = 1
 
-perception_grid = perceive(state_grid)
-updates_grid = update_grid(perception_grid)
-updated_grid = stochastic_update(state_grid, updates_grid)
-final_grid = alive_masking(updated_grid)
+# sample random number of steps
+steps = random.randint(5, 10)
 
-
-print(final_grid)
+animate_automata(state_grid, update, steps)
