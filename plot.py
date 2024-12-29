@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-def animate_automata(initial_grid, update_function, steps, cmap='viridis', interval=200):
+def animate_automata(initial_grid, update_function, steps, interval=200):
     """
     Dynamically updates and plots a cellular automaton on the same graphic.
 
@@ -15,10 +15,8 @@ def animate_automata(initial_grid, update_function, steps, cmap='viridis', inter
     """
     # Initialize the figure
     fig, ax = plt.subplots()
-    im = ax.imshow(initial_grid[:, :, :4].astype('uint8'), cmap=cmap, interpolation='nearest')
+    im = ax.imshow(initial_grid[:, :, :4].astype('uint8'), interpolation='nearest')
     ax.set_title("Dynamic Cellular Automaton")
-    ax.set_xlabel("Cells")
-    ax.set_ylabel("Time Step")
 
     # Function to update the animation
     grid = initial_grid.copy()  # Create a mutable copy
@@ -32,4 +30,4 @@ def animate_automata(initial_grid, update_function, steps, cmap='viridis', inter
 
     # Create the animation
     ani = FuncAnimation(fig, update, frames=range(steps), interval=interval, blit=True)
-    plt.show(block=True)
+    plt.show()

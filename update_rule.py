@@ -76,7 +76,7 @@ def alive_masking(state_grid):
     # Apply a 3×3 sliding maximum filter
     max_in_frame = maximum_filter(layer, size = 3)
 
-    alive = max_in_frame > 0.1
+    alive = max_in_frame > 0.1 * 255
     alive = np.repeat(alive[:, :, np.newaxis], 16, axis=2)  # Shape becomes (height, width, 16)
 
 
@@ -84,7 +84,9 @@ def alive_masking(state_grid):
 
     return state_grid
 
+
 def update(state_grid):
+    # we do a whole update step
     perception_grid = perceive(state_grid)
     updates_grid = update_grid(perception_grid)
     updated_grid = stochastic_update(state_grid, updates_grid)
