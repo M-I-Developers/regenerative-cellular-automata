@@ -2,8 +2,9 @@ import numpy as np
 from scipy.ndimage import sobel
 import torch.nn as nn
 import torch
-from config import height, width
 from scipy.ndimage import maximum_filter
+from config import height, width
+from target_image import get_target_image
 
 
 def perceive(state_grid):
@@ -18,8 +19,8 @@ def perceive(state_grid):
 
 
 def update_rule(perception_vector):
-
     perception_vector = torch.tensor(perception_vector, dtype=torch.float32)
+    
     # The following code operates on a single cell's perception vector
     # (This is why we return to 16 dimension)
     first_layer = nn.Linear(48, 128)
@@ -68,9 +69,7 @@ def stochastic_update(state_grid, update_grid):
 def alive_masking(state_grid):
     # we want to check if there is at least one alive neighbour cell
     # we're doing this by taking the max alpha channel from the neighbours
-    #
-    # alive = np.max(state_grid[:, :, 3], (3, 3)) > 0.1
-    # rand_mask = np.repeat(alive[:, :, np.newaxis], 16, axis=2)
+    
     layer = state_grid[:, :, 3] # shape(height, width)
 
     # Apply a 3×3 sliding maximum filter
@@ -85,11 +84,18 @@ def alive_masking(state_grid):
     return state_grid
 
 
-def update(state_grid):
+def compute_loss(state_grid):
+    return torch.mean((state_grid - get_target_image()) ** 2)
+
+
+def update(state_grid, total_loss):
     # we do a whole update step
     perception_grid = perceive(state_grid)
     updates_grid = update_grid(perception_grid)
     updated_grid = stochastic_update(state_grid, updates_grid)
     final_grid = alive_masking(updated_grid)
-    
-    return final_grid
+
+    tensor_grid = torch.tensor(final_grid, dtype=torch.float32)
+    total_loss += compute_loss(tensor_grid)
+
+    return final_grid, total_loss, tensor_grid

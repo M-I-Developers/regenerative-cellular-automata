@@ -1,7 +1,11 @@
 import numpy as np
 import cv2
+import torch
+from config import image, height, width
 
-def load_image(image, height, width):
+target_image = []
+
+def load_image():
     img = cv2.cvtColor(cv2.imread(image), cv2.COLOR_BGR2RGB) # convert BGR image to RGB
     resized_img = cv2.resize(img, dsize=(width, height))
     
@@ -13,4 +17,11 @@ def load_image(image, height, width):
     other_channels = np.zeros((height, width, 12))
     rgba_img = np.dstack((rgba_img, other_channels))
     
-    return rgba_img
+    # return the image as a tensor, cause we only use it to compute the loss
+    return torch.tensor(rgba_img, dtype=torch.float32)
+
+def get_target_image():
+    global target_image
+    if target_image == []:
+        target_image = load_image()
+    return target_image

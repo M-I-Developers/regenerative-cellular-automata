@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-def animate_automata(initial_grid, update_function, steps, interval=200):
+def animate_automata(initial_grid, update_function, steps, tensor_grid, interval=200):
     """
     Dynamically updates and plots a cellular automaton on the same graphic.
 
@@ -20,14 +20,17 @@ def animate_automata(initial_grid, update_function, steps, interval=200):
 
     # Function to update the animation
     grid = initial_grid.copy()  # Create a mutable copy
+    total_loss = 0
 
     def update(frame):
         print("Reached step: ", frame)
-        nonlocal grid
-        grid = update_function(grid)
+        nonlocal grid, total_loss, tensor_grid
+        grid, total_loss, tensor_grid = update_function(grid, total_loss)
         im.set_array(grid[:, :, :4].astype('uint8'))
         return [im]
 
     # Create the animation
     ani = FuncAnimation(fig, update, frames=range(steps), interval=interval, blit=True)
     plt.show()
+
+    return total_loss
