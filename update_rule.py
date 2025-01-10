@@ -6,6 +6,10 @@ from scipy.ndimage import maximum_filter
 from config import height, width
 from target_image import get_target_image
 
+# updates network
+first_layer = nn.Linear(48, 128)
+second_layer = nn.Linear(128, 16)
+weights = torch.tensor((np.zeros((16, 128))), dtype=torch.float32, requires_grad=True)
 
 def perceive(state_grid):
     # apply sobel filters
@@ -23,21 +27,14 @@ def update_rule(perception_vector):
     
     # The following code operates on a single cell's perception vector
     # (This is why we return to 16 dimension)
-    first_layer = nn.Linear(48, 128)
-
     # apply activation function
     first_layer_result = nn.functional.relu(first_layer(perception_vector))
-
-    second_layer = nn.Linear(128, 16)
-    weights = torch.tensor(np.zeros((16, 128)), dtype=torch.float32)
-
 
     # apply weights
     with torch.no_grad():
         second_layer.weight.copy_(weights)
 
         second_layer_result = second_layer(first_layer_result)
-
 
         return second_layer_result.numpy()
 
@@ -75,27 +72,22 @@ def alive_masking(state_grid):
     # Apply a 3×3 sliding maximum filter
     max_in_frame = maximum_filter(layer, size = 3)
 
-    alive = max_in_frame > 0.1 * 255
+    alive = max_in_frame > 0.1
     alive = np.repeat(alive[:, :, np.newaxis], 16, axis=2)  # Shape becomes (height, width, 16)
 
-
-    state_grid = state_grid * alive
-
-    return state_grid
+    return state_grid * alive
 
 
 def compute_loss(state_grid):
+    state_grid = torch.tensor(state_grid, dtype=torch.float32)
     return torch.mean((state_grid - get_target_image()) ** 2)
 
 
-def update(state_grid, total_loss):
+def update(state_grid):
     # we do a whole update step
     perception_grid = perceive(state_grid)
     updates_grid = update_grid(perception_grid)
     updated_grid = stochastic_update(state_grid, updates_grid)
     final_grid = alive_masking(updated_grid)
 
-    tensor_grid = torch.tensor(final_grid, dtype=torch.float32)
-    total_loss += compute_loss(tensor_grid)
-
-    return final_grid, total_loss, tensor_grid
+    return final_grid

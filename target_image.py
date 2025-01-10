@@ -18,7 +18,7 @@ def load_image():
     rgba_img = np.dstack((rgba_img, other_channels))
     
     # return the image as a tensor, cause we only use it to compute the loss
-    return torch.tensor(rgba_img, dtype=torch.float32)
+    return torch.tensor(rgba_img / 255.0, dtype=torch.float32)
 
 def get_target_image():
     global target_image
