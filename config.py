@@ -3,4 +3,4 @@ width = 256
 
 image = "crying_emoji.jpg"
 
-num_epochs = 5
+num_epochs = 10

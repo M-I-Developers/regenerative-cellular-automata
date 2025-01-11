@@ -7,9 +7,21 @@ from config import height, width
 from target_image import get_target_image
 
 # updates network
-first_layer = nn.Linear(48, 128)
-second_layer = nn.Linear(128, 16)
-weights = torch.tensor((np.zeros((16, 128))), dtype=torch.float32, requires_grad=True)
+# The following code operates on a single cell's perception vector
+# (This is why we return to 16 dimension)
+class NN(nn.Module):
+    def __init__(self):
+        super(NN, self).__init__()
+        self.first_layer = nn.Linear(48, 128)
+        self.second_layer = nn.Linear(128, 16)
+        nn.init.zeros_(self.second_layer.weight) # initialize the weights of the final layer with zero
+
+    def forward(self, perception_vector):
+        first_layer_result = nn.functional.relu(self.first_layer(perception_vector))
+        second_layer_result = self.second_layer(first_layer_result)
+        return second_layer_result
+    
+model = NN()
 
 def perceive(state_grid):
     # apply sobel filters
@@ -25,19 +37,9 @@ def perceive(state_grid):
 def update_rule(perception_vector):
     perception_vector = torch.tensor(perception_vector, dtype=torch.float32)
     
-    # The following code operates on a single cell's perception vector
-    # (This is why we return to 16 dimension)
-    # apply activation function
-    first_layer_result = nn.functional.relu(first_layer(perception_vector))
-
-    # apply weights
-    with torch.no_grad():
-        second_layer.weight.copy_(weights)
-
-        second_layer_result = second_layer(first_layer_result)
-
-        return second_layer_result.numpy()
-
+    # go through the nn
+    result = model(perception_vector)
+    return result.cpu().detach().numpy()
 
 def update_grid(perception_grid):
     update_grid = np.empty((height, width, 16))
