@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from config import height, width, num_epochs
 from update_rule import update, compute_loss, model
 
-state_grid = np.zeros(shape=(height, width, 16))
+state_grid = torch.tensor(np.zeros(shape=(height, width, 16)), dtype=torch.float32, requires_grad=False)
 
 # plant center seed
 seed_height = height // 2
@@ -20,7 +20,7 @@ losses = np.zeros(num_epochs)
 
 # training loop
 for epoch in range(num_epochs):
-    optimizer.zero_grad() # zero gradients at the start of each epoch
+    optimizer.zero_grad()  # zero gradients at the start of each epoch
 
     # sample random number of steps
     steps = 10
@@ -36,11 +36,11 @@ for epoch in range(num_epochs):
     total_loss /= steps
 
     losses[epoch] = total_loss
-    
+
     # compute the total loss over all time steps
     total_loss_tensor = torch.tensor(total_loss, requires_grad=True)
     total_loss_tensor.backward()  # backpropagate through time (accumulate gradients)
-    
+
     optimizer.step()  # update the grid parameters
 
     print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {total_loss}")

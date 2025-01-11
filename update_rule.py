@@ -6,6 +6,7 @@ from scipy.ndimage import maximum_filter
 from config import height, width
 from target_image import get_target_image
 
+
 # updates network
 # The following code operates on a single cell's perception vector
 # (This is why we return to 16 dimension)
@@ -14,35 +15,39 @@ class NN(nn.Module):
         super(NN, self).__init__()
         self.first_layer = nn.Linear(48, 128)
         self.second_layer = nn.Linear(128, 16)
-        nn.init.zeros_(self.second_layer.weight) # initialize the weights of the final layer with zero
+        nn.init.zeros_(self.second_layer.weight)  # initialize the weights of the final layer with zero
 
     def forward(self, perception_vector):
         first_layer_result = nn.functional.relu(self.first_layer(perception_vector))
         second_layer_result = self.second_layer(first_layer_result)
         return second_layer_result
-    
+
+
 model = NN()
 
+
 def perceive(state_grid):
+    new_state_grid = state_grid.detach().numpy()
+
     # apply sobel filters
-    grad_x = sobel(state_grid, 0)
-    grad_y = sobel(state_grid, 1)
+    grad_x = sobel(new_state_grid, 0)
+    grad_y = sobel(new_state_grid, 1)
 
     # concatenate the state's information + info about the neighbours
-    perception_grid = np.concatenate((state_grid, grad_x, grad_y), axis=2)
+    perception_grid = np.concatenate((new_state_grid, grad_x, grad_y), axis=2)
 
-    return perception_grid
+    return torch.from_numpy(perception_grid)
 
 
 def update_rule(perception_vector):
-    perception_vector = torch.tensor(perception_vector, dtype=torch.float32)
-    
+
     # go through the nn
     result = model(perception_vector)
-    return result.cpu().detach().numpy()
+    return result
+
 
 def update_grid(perception_grid):
-    update_grid = np.empty((height, width, 16))
+    update_grid = torch.empty(height, width, 16)
 
     for h in range(height):
         for w in range(width):
@@ -59,29 +64,33 @@ def stochastic_update(state_grid, update_grid):
 
     # repetas the value on the nely added dimension
     rand_mask = np.repeat(rand_mask[:, :, np.newaxis], 16, axis=2)  # Shape becomes (height, width, 16)
+    rand_mask = torch.from_numpy(rand_mask)
 
-    update_grid = update_grid * rand_mask
+    update_grid = torch.mul(update_grid,rand_mask)
 
-    return state_grid + update_grid
+    return torch.add(state_grid,update_grid)
 
 
 def alive_masking(state_grid):
     # we want to check if there is at least one alive neighbour cell
     # we're doing this by taking the max alpha channel from the neighbours
-    
-    layer = state_grid[:, :, 3] # shape(height, width)
+
+    new_state_grid = state_grid.detach().numpy()
+
+    layer = new_state_grid[:, :, 3]  # shape(height, width)
+
 
     # Apply a 3×3 sliding maximum filter
-    max_in_frame = maximum_filter(layer, size = 3)
+    max_in_frame = maximum_filter(layer, size=3)
 
     alive = max_in_frame > 0.1
     alive = np.repeat(alive[:, :, np.newaxis], 16, axis=2)  # Shape becomes (height, width, 16)
 
-    return state_grid * alive
+    alive = torch.from_numpy(alive)
+    return torch.mul(state_grid,alive)
 
 
 def compute_loss(state_grid):
-    state_grid = torch.tensor(state_grid, dtype=torch.float32)
     return torch.mean((state_grid - get_target_image()) ** 2)
 
 
