@@ -16,9 +16,8 @@ def load_image():
     # add other channels to maintain image shape as expected (height, width, 16)
     other_channels = np.zeros((height, width, 12))
     rgba_img = np.dstack((rgba_img, other_channels))
-    
-    # return the image as a tensor, cause we only use it to compute the loss
-    return torch.tensor(rgba_img / 255.0, dtype=torch.float32)
+
+    return torch.from_numpy(rgba_img / 255.0).float()
 
 def get_target_image():
     global target_image
