@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from scipy.ndimage import sobel
-from nn import model
+from nn import model, trained_model
 from config import height, width
 from nn import compute_loss
 
@@ -21,41 +21,34 @@ def perceive(state_grid):
     return perception_grid
 
 
-def update_rule(perception_vector):
+def update_rule(perception_vector, train):
     # go through the nn
-    result = model(perception_vector)
+    if train:
+        result = model(perception_vector)
+    else:
+        result = trained_model(perception_vector)
     return result
 
 
-def update_grid(perception_grid):
+def update_grid(perception_grid, train):
     update_grid = torch.empty((height, width, 16))
     
     for h in range(height):
         for w in range(width):
-            update_grid[h, w, :] = update_rule(perception_grid[h, w, :])
-
-    # debugging
-    should_update = update_grid > 0
-    print(f"Number of elements which should be updated: {should_update.sum()}")
-    print(f"Sum of elements in update grid = {update_grid.sum()}")
+            update_grid[h, w, :] = update_rule(perception_grid[h, w, :], train)
 
     return update_grid
 
 
 def stochastic_update(state_grid, update_grid):
     # we want to update only a part of the cells,
-    # so we either update the whole cell or none of it(this is why
-    #  we do not specify the third dimension)
-    rand_mask = (torch.rand(height, width) < 0.5).unsqueeze(-1)
+    # so we either update the whole cell or none of it
+    rand_mask = (torch.rand(height, width) < 0.5).unsqueeze(-1) # (height, width, 1)
     
-    # Broadcast the mask along the channels dimension
-    rand_mask = rand_mask.expand(-1, -1, 16)  # Shape becomes (height, width, channels)
+    # broadcast the mask along the channels dimension
+    rand_mask = rand_mask.expand(-1, -1, 16)  # (height, width, channels)
 
     update_grid = update_grid * rand_mask
-
-    # debugging
-    will_update = update_grid > 0
-    print(f"Number of elements that will get updated: {will_update.sum()}")
 
     return state_grid + update_grid
 
@@ -67,24 +60,25 @@ def alive_masking(state_grid):
 
     # Apply a 3×3 sliding maximum filter
     max_in_frame = F.max_pool2d(layer.unsqueeze(0).unsqueeze(0), kernel_size=3, stride=1, padding=1)
-    alive = (max_in_frame.squeeze(0).squeeze(0) > 0.1).unsqueeze(-1)  # Shape becomes (height, width, 16)
+    alive = (max_in_frame.squeeze(0).squeeze(0) > 0.1).unsqueeze(-1)  # (height, width, 16)
 
-    # debugging
-    print(f"Number of alive elements: {alive.sum()}")
-
-    return state_grid * alive
+    return alive
 
 
-def update(state_grid):
+def update(state_grid, train=True):
     # we do a whole update step
     with torch.no_grad():
+        pre_life_mask = alive_masking(state_grid)
         perception_grid = perceive(state_grid)
 
-    updates_grid = update_grid(perception_grid)
+    updates_grid = update_grid(perception_grid, train)
     loss = compute_loss(state_grid, updates_grid)
 
     with torch.no_grad():
         updated_grid = stochastic_update(state_grid, updates_grid)
-        final_grid = alive_masking(updated_grid)
+        
+        post_life_mask = alive_masking(updated_grid)
+        life_mask = pre_life_mask & post_life_mask
+        final_grid = updated_grid * life_mask
 
     return final_grid, loss

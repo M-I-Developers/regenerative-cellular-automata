@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from target_image import get_target_image
+from config import trained_model_path
 
 # updates network
 class NN(nn.Module):
@@ -22,3 +23,7 @@ def compute_loss(state_grid, updates):
 
 mse = nn.MSELoss()
 model = NN()
+
+# load the trained model
+trained_model = NN()
+trained_model.load_state_dict(torch.load(trained_model_path, map_location=torch.device('cpu')))
